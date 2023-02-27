@@ -1,0 +1,20 @@
+
+
+version: '3'
+# la imagen es la version de mongo que descargamos
+# los puertos son los usuales de mongo, conectar uno de aca con el otro
+services:
+  db:
+    image: mongo:5
+    restart: always
+    ports:
+      - 27017:27017
+    environment:
+      MONGODB_DATABASE: nest-pokemon
+    volumes:
+      - ./mongo:/data/db
+
+# volumes es para hacer que la informacion sea persistente y la direccion 
+# la creamos, mongo y el :/data/db es la imagen que montamos
+
+# docker-compose up -d // para levantar y hacer el deattach
