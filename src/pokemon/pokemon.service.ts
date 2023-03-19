@@ -1,15 +1,19 @@
 import { BadRequestException, Injectable, InternalServerErrorException } from '@nestjs/common';
 import { NotFoundException } from '@nestjs/common/exceptions';
+import { ConfigService } from '@nestjs/config';
 import { InjectModel } from '@nestjs/mongoose';
 import { isValidObjectId, Model } from 'mongoose';
 import { Pokemon } from './entities/pokemon.entity';
 
 import { CreatePokemonDto } from './dto/create-pokemon.dto';
 import { UpdatePokemonDto } from './dto/update-pokemon.dto';
+import { PaginationDto } from 'src/common/dto/pagination.dto';
 
 @Injectable()
 export class PokemonService {
 
+  private defaultLimit: number;
+  
   constructor(
     /*
     Para hacer la inserccion a BD, se tiene que
@@ -18,11 +22,15 @@ export class PokemonService {
     ... el Model es de mongoose nomas pero el generico es el export de entity
     */
     @InjectModel(Pokemon.name)
-    private readonly pokemonModel : Model<Pokemon>
-  ){}
+    private readonly pokemonModel : Model<Pokemon>,
+
+    private readonly configService: ConfigService
+  ){
+    this.defaultLimit = configService.get<number>('defaultLimit')
+  }
 
   // el create es de mongoose
-  async create(createPokemonDto: CreatePokemonDto) {
+  async createControl(createPokemonDto: CreatePokemonDto) {
     createPokemonDto.nombre = createPokemonDto.nombre.toLowerCase();
     
     try {
@@ -34,8 +42,17 @@ export class PokemonService {
     }
   }
 
-  findAll() {
-    return `This action returns all pokemon`;
+  async findAll(paginationDto: PaginationDto) {
+
+    const { limit = this.defaultLimit, offset = 0 } = paginationDto;
+
+    return this.pokemonModel.find()
+      .skip( offset )
+      .limit( limit )
+      .sort({
+        no: 1
+      })
+      .select('-__v')
   }
 
   async findOne(term: string) {
@@ -95,5 +112,22 @@ export class PokemonService {
     }
     console.log(error)
     throw new InternalServerErrorException(`Can't create pokemon -- Check Server Logs`)
+  }
+
+  async insertManyPoke( term: { nombre: string; no: number; } []){
+    try {
+      const pokemon = await this.pokemonModel.insertMany( term ) 
+      return pokemon
+    } catch (error) {
+      this.handleException(error);
+    }
+  }
+
+  async deleteManyPoke({}){
+    try {
+      await this.pokemonModel.deleteMany({})
+    } catch (error) {
+      console.log(error);
+    }
   }
 }
